@@ -4,9 +4,11 @@
 //==============================================================================
 MainComponent::MainComponent()
 {
+    for(size_t i = 0; i < NUM_BIRDS; i++){
+        cfs.emplace_back();
+        qs.emplace_back();
+    }
     //initialize_birds();
-    // Make sure you set the size of the component after
-    // you add any child components.
     setSize (550, 200);
     
     nest.init(NUM_BIRDS);
@@ -40,32 +42,48 @@ MainComponent::~MainComponent()
 //==============================================================================
 void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRate)
 {
-    // This function will be called when the audio device is started, or when
-    // its settings (i.e. sample rate, block size, etc) are changed.
-
-    // You can use this function to initialise any resources you might need,
-    // but be careful - it will be called on the audio thread, not the GUI thread.
-
-    // For more details, see the help for AudioProcessor::prepareToPlay()
+    multi_biquad.prepareToPlay(sampleRate);
+    for(size_t i = 0; i < NUM_BIRDS; i++){
+        cfs[i].reset(sampleRate, 0.0001f);
+        qs[i].reset(sampleRate,0.0001f);
+    }
 }
 
 void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& bufferToFill)
 {
-    // Your audio-processing code goes here!
-
-    // For more details, see the help for AudioProcessor::getNextAudioBlock()
-
-    // Right now we are not producing any data, in which case we need to clear the buffer
-    // (to prevent the output of random noise)
     bufferToFill.clearActiveBufferRegion();
+    bufferToFill.buffer->clear();
+    // initaliaze for buffer.
+    for(int i = 0; i < NUM_BIRDS; i++){
+        cfs[i].setCurrentAndTargetValue(freq_from_norm(nest.get_normalized_y(i)));
+        qs[i].setCurrentAndTargetValue(nest.get_normalized_x(i));
+    }
+    for(auto channel = 0; channel < bufferToFill.buffer->getNumChannels(); ++channel){
+        auto* buffer = bufferToFill.buffer->getWritePointer(channel,bufferToFill.startSample);
+        for(auto index = 0; index < bufferToFill.numSamples; ++index){
+            
+            float rand = (juce::Random::getSystemRandom().nextFloat()*2)-1;
+            
+            
+            if(index < 1){
+                for(int i = 0; i < NUM_BIRDS; i++){
+                    multi_biquad.make_bandpass(cfs[i].getCurrentValue(), 5, qs[i].getCurrentValue(), i);
+                    sig_accumulator += (multi_biquad.filterSample(rand, i))/NUM_BIRDS;
+                }
+                buffer[index] = sig_accumulator/790; // 50 because i'm running out of time and it sounds fine.
+            }else{
+                for(int i = 0; i < NUM_BIRDS; i++){
+                    multi_biquad.make_bandpass(cfs[i].getCurrentValue(), nest.movers[i].mass * 5, qs[i].getCurrentValue(), i);
+                    sig_accumulator += (multi_biquad.filterSample(rand, i))/NUM_BIRDS;
+                }
+                buffer[index] = sig_accumulator/790;
+            }
+        }
+    }
 }
 
 void MainComponent::releaseResources()
 {
-    // This will be called when the audio device stops, or when it is being
-    // restarted due to a setting change.
-
-    // For more details, see the help for AudioProcessor::releaseResources()
 }
 
 //==============================================================================
@@ -73,15 +91,9 @@ void MainComponent::paint (juce::Graphics& g)
 {
     g.setColour(juce::Colours::whitesmoke);
     g.fillAll();
-    //bird.paint(g);
-//    paint_birds(g);
 }
 
 void MainComponent::resized()
 {
     nest.setBounds(0,0,550,200);
-//    auto bounds = getLocalBounds();
-//    for(std::unique_ptr<termite::bird>& birds : *bird_test_ref){
-//        birds->setBounds(0,0,550,200);
-//    }
 }

@@ -15,7 +15,7 @@
 
 
 const size_t MAX_NUM_FORCES = 4;
-const size_t NUM_BIRDS = 300;
+const size_t NUM_BIRDS = 25;
 const size_t MAX_SPEED = 8;
 
 
@@ -58,7 +58,7 @@ struct mover {
     vectorXY vel{0,0};
     vectorXY accel{0,0};
     vectorXY drag{0,0};
-    const int mass = 1;
+    const float mass = 1;
     
 };
 // =================================
@@ -70,17 +70,30 @@ struct mover {
 // =================================
 class nest : public juce::Component {
 public:
+    // public cause mass needs to be accessed for gain;
+    std::vector<mover> movers;
+    
     void init(size_t num_movers){
         for(size_t i = 0; i < num_movers; i++){
-            movers.emplace_back(mover{{static_cast<float>(i)*10,100},{0,0},{0,0},{-20,0.95},1});
+            auto rand_val = juce::Random::getSystemRandom().nextInt(juce::Range<int>(-4,4));
+            auto rand_scale = juce::Random::getSystemRandom().nextDouble();
+            float rand_y = rand_val * rand_scale;
+            float rand_m_scale = juce::Random::getSystemRandom().nextDouble();
+            float rand_mass = (juce::Random::getSystemRandom().nextInt(juce::Range<int>(2,4)) * rand_m_scale);
+            auto rand_x = juce::Random::getSystemRandom().nextInt(juce::Range<int>(0,400));
+            movers.emplace_back(mover{{static_cast<float>(rand_x),100},{0,rand_y},{0,0},{0,0},rand_mass});
         }
         initialized = true;
     }
     void paint(juce::Graphics& g){
         if(initialized){
             for(mover& m : movers){
+                g.setColour(shadow);
+                g.fillEllipse(m.pos.x-((getWidth()-m.pos.x)/40),m.pos.y+2, w*(m.mass/1.85), h*(m.mass/1.85));
                 g.setColour(bird_color);
-                g.fillEllipse(m.pos.x, m.pos.y, w, h);
+                g.fillEllipse(m.pos.x, m.pos.y, w*(m.mass/2), h*(m.mass/2));
+                g.setColour(juce::Colours::white);
+                g.drawEllipse(m.pos.x,m.pos.y, w*(m.mass/2),h*(m.mass/2),5);
             }
         }
         if(!initialized){}
@@ -99,12 +112,10 @@ public:
             for(mover& m : movers){
                 m.vel = m.vel + m.accel;
                 //m.vel = m.vel * m.drag;
-                DBG(m.vel.x);
                 if(m.vel.x > MAX_SPEED){
                     m.vel.x = 8;
                 }
                 m.pos = m.pos + m.vel;
-                DBG(m.pos.x);
                 
                 m.accel = m.accel * 0;
                 edges(m);
@@ -138,10 +149,19 @@ public:
     std::vector<mover>* get_birds(){
         return &movers;
     }
+    float get_normalized_y(int index){
+        auto height = movers[index].pos.y;
+        auto output = height/getHeight();
+        return (output*2);
+    }
+    float get_normalized_x(int index){
+        auto width = movers[index].pos.x;
+        return (width/getWidth())+2;
+    }
     
 private:
-    juce::Colour bird_color = juce::Colour(56,97,140); // navy
-    std::vector<mover> movers;
+    juce::Colour shadow = juce::Colour(1006634260);
+    juce::Colour bird_color = juce::Colour(255,110,145);
     const int w = 50;
     const int h = 50;
     bool initialized = false;
