@@ -61,8 +61,9 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
     for(auto channel = 0; channel < bufferToFill.buffer->getNumChannels(); ++channel){
         auto* buffer = bufferToFill.buffer->getWritePointer(channel,bufferToFill.startSample);
         for(auto index = 0; index < bufferToFill.numSamples; ++index){
+            sig_accumulator = 0;
             
-            float rand = (juce::Random::getSystemRandom().nextFloat()*2)-1;
+            float rand = (juce::Random::getSystemRandom().nextFloat()-0.5)*2;
             
             
             if(index < 1){
@@ -70,13 +71,13 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
                     multi_biquad.make_bandpass(cfs[i].getCurrentValue(), 5, qs[i].getCurrentValue(), i);
                     sig_accumulator += (multi_biquad.filterSample(rand, i))/NUM_BIRDS;
                 }
-                buffer[index] = sig_accumulator/790; // 50 because i'm running out of time and it sounds fine.
+                buffer[index] = std::tanh(sig_accumulator/NUM_BIRDS); // tanh to keep it scoped...
             }else{
                 for(int i = 0; i < NUM_BIRDS; i++){
                     multi_biquad.make_bandpass(cfs[i].getCurrentValue(), nest.movers[i].mass * 5, qs[i].getCurrentValue(), i);
                     sig_accumulator += (multi_biquad.filterSample(rand, i))/NUM_BIRDS;
                 }
-                buffer[index] = sig_accumulator/790;
+                buffer[index] = std::tanh(sig_accumulator/NUM_BIRDS);
             }
         }
     }
@@ -84,6 +85,7 @@ void MainComponent::getNextAudioBlock (const juce::AudioSourceChannelInfo& buffe
 
 void MainComponent::releaseResources()
 {
+    sig_accumulator = 0;
 }
 
 //==============================================================================

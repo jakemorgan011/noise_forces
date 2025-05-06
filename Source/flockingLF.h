@@ -152,11 +152,11 @@ public:
     float get_normalized_y(int index){
         auto height = movers[index].pos.y;
         auto output = height/getHeight();
-        return (output*2);
+        return (output*2); // reset to *2 for y = freq
     }
     float get_normalized_x(int index){
         auto width = movers[index].pos.x;
-        return (width/getWidth())+2;
+        return ((width/getWidth()*50)+1); // add 2
     }
     
 private:
@@ -197,6 +197,9 @@ class mouse_force : public juce::Component {
 class mouse_dropper : public juce::Component {
     
 };
+
+
+
 // for the birds just use std::vector<> because that really is the best way to do it.
 // I DON'T HAVE ENOUGH TIME TO DESIGN A COOL BIRD BUT THE CIRCLE WILL DO FOR NOW
 class bird : public juce::Component {

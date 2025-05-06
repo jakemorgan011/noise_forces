@@ -28,6 +28,8 @@ private:
     std::vector<juce::LinearSmoothedValue<float>> cfs;
     std::vector<juce::LinearSmoothedValue<float>> qs;
     
+    float last_rand =0.f;
+    
     float sig_accumulator = 0;
     
     float freq_from_norm(float in_norm){
